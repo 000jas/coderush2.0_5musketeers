@@ -20,13 +20,24 @@ const ORBIT_PERIOD_SECS = 45; // Seconds for a full orbital revolution
 // Inner component to handle frame-by-frame updates inside the Canvas context
 const SceneController: React.FC<{ stateRef: React.RefObject<SatelliteState> }> = ({ stateRef }) => {
   const satelliteGroupRef = useRef<THREE.Group>(null);
+  const currentAngleRef = useRef(0);
 
-  useFrame((frameState) => {
-    if (!satelliteGroupRef.current) return;
+  useFrame((frameState, delta) => {
+    if (!satelliteGroupRef.current || !stateRef.current) return;
 
-    // 1. Calculate orbital angle based on elapsed clock time
-    const elapsed = frameState.clock.getElapsedTime();
-    const orbitAngle = (elapsed / ORBIT_PERIOD_SECS) * Math.PI * 2;
+    // 1. Calculate orbital angle based on telemetry mode
+    // Instead of fixed time, we adjust speed based on mode
+    let speedMult = 1.0;
+    if (stateRef.current.missionMode === 'Safe Mode') {
+      speedMult = 0.2; // Slow down significantly in safe mode
+    } else if (stateRef.current.missionMode === 'Earth Observation') {
+      speedMult = 0.8; // Slow down slightly for observation
+    }
+    
+    // If the simulation is paused (communication disconnected or manual pause), 
+    // we could stop it, but let's keep it moving smoothly
+    currentAngleRef.current += (delta / ORBIT_PERIOD_SECS) * Math.PI * 2 * speedMult;
+    const orbitAngle = currentAngleRef.current;
 
     // 2. Position satellite on the circular XZ orbital path
     const x = Math.cos(orbitAngle) * ORBIT_RADIUS;

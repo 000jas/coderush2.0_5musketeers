@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Database
 } from 'lucide-react'
 import { useSidebar } from './sidebar-context'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -31,7 +32,8 @@ export function AppSidebar() {
     { name: 'Procedure Engine', id: 'procedure-engine', icon: FileText },
     { name: 'Simulation', id: 'simulation', icon: Play },
     { name: 'Mission Replay', id: 'mission-replay', icon: History },
-    { name: 'Mission History', id: 'mission-history', icon: Radio },
+    { name: 'Logs', id: 'logs', icon: Radio },
+    { name: 'Data Collection', id: 'data-collection', icon: Database },
     { name: 'Settings', id: 'settings', icon: Settings2 },
   ]
 

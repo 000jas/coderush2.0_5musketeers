@@ -37,6 +37,7 @@ import { useDashboardState } from '../hooks/useDashboardState';
 import { TelemetryChart } from './TelemetryChart';
 import { ProceduresSection } from './procedures-section';
 import { TimelinePlannerSection } from './timeline-planner-section';
+import { supabase } from '../lib/supabase';
 
 export function MissionDashboard() {
   const {
@@ -58,6 +59,50 @@ export function MissionDashboard() {
 
   const [selectedFault, setSelectedFault] = useState<string>('Battery Failure');
   const [selectedSubsystem, setSelectedSubsystem] = useState<string | null>(null);
+  const [anomalyLogs, setAnomalyLogs] = useState<any[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const capturedImages = [
+    '/images/earth_capture_1_1786162005451.png',
+    '/images/earth_capture_2_1786162020003.png',
+    '/images/earth_capture_3_1786162036719.png'
+  ];
+
+  useEffect(() => {
+    if (isSimulationActive) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % capturedImages.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isSimulationActive, capturedImages.length]);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const { data, error } = await supabase.from('anomalies').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setAnomalyLogs(data);
+      }
+    };
+    fetchLogs();
+    
+    // Optional: Set up realtime subscription
+    const subscription = supabase.channel('anomalies_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'anomalies' }, payload => {
+        fetchLogs();
+      })
+      .subscribe();
+      
+    return () => { supabase.removeChannel(subscription); }
+  }, []);
+
+  const handleApproveAnomaly = async (id: number) => {
+    await supabase.from('anomalies').delete().eq('id', id);
+  };
+
+  const handleRejectAnomaly = async (id: number) => {
+    await supabase.from('anomalies').delete().eq('id', id);
+  };
 
   // Dynamic pass times and downlink percentages
   const [downlinkProgress, setDownlinkProgress] = useState(0);
@@ -137,7 +182,7 @@ export function MissionDashboard() {
     <div className="flex flex-col w-full min-h-screen bg-slate-50 text-slate-800 relative select-none">
       
       {/* 1. MISSION HEADER */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm select-none">
+      <header id="dashboard" className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm select-none">
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center size-9 rounded-xl bg-sky-500/10 text-sky-600 border border-sky-500/20">
             <Activity className="size-4.5" />
@@ -345,9 +390,18 @@ export function MissionDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/40">
-                      <span className="text-[10px] text-slate-500">Executing routine surface temperature orbital scanning.</span>
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase">✓ Mission Stable</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] uppercase font-bold text-slate-400">Current Task</span>
+                        <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">{state.currentTask || 'Executing routine orbital scanning.'}</p>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] uppercase font-bold text-slate-400">AI Recommendations (Nominal)</span>
+                        <div className="flex flex-col gap-1 mt-0.5">
+                          <span className="text-[10px] text-slate-600 font-semibold truncate">✓ Maintain current solar array tracking.</span>
+                          <span className="text-[10px] text-slate-600 font-semibold truncate">✓ Continue standard telemetry downlink.</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -358,7 +412,7 @@ export function MissionDashboard() {
         </div>
 
         {/* ==================== MAIN SECTION: TWO-COLUMN TELEMETRY VIEW ==================== */}
-        <div className="grid gap-6 xl:grid-cols-12 lg:grid-cols-12 md:grid-cols-1">
+        <div id="telemetry-monitor" className="grid gap-6 xl:grid-cols-12 lg:grid-cols-12 md:grid-cols-1">
           
           {/* LEFT COLUMN: LIVE TELEMETRY PARAMETERS */}
           <div className="xl:col-span-4 lg:col-span-5 md:col-span-12">
@@ -468,6 +522,42 @@ export function MissionDashboard() {
           </div>
 
         </div>
+
+        {/* ==================== LIVE SATELLITE FEED (ONLY WHEN SIMULATION IS ACTIVE) ==================== */}
+        {isSimulationActive && (
+          <div className="w-full mt-2">
+            <Card className="border-emerald-200 bg-white rounded-2xl shadow-sm flex flex-col">
+              <div className="px-4 py-3 border-b border-border/75 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="size-4 text-emerald-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Live Satellite Feed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <Badge variant="secondary" className="font-mono text-[9px] bg-emerald-50 text-emerald-600 border-emerald-200 shadow-none">CAPTURING</Badge>
+                </div>
+              </div>
+              <CardContent className="p-6 flex flex-col sm:flex-row gap-6 items-center bg-slate-50/50">
+                <div className="w-full sm:w-1/3 flex flex-col gap-3">
+                  <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Recent Earth Capture</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    This image was captured by the satellite's primary MS-VIS-IR Optical Sensor during its recent pass over the Earth's terminator line.
+                  </p>
+                  <div className="text-[10px] font-mono text-slate-400 mt-2 flex flex-col gap-1">
+                    <span>Timestamp: <span className="font-semibold text-slate-600">{new Date().toLocaleTimeString()}</span></span>
+                    <span>Resolution: <span className="font-semibold text-slate-600">8K High Definition</span></span>
+                  </div>
+                </div>
+                <div className="w-full sm:w-2/3 h-72 rounded-xl overflow-hidden border border-slate-200 relative group shadow-sm bg-black">
+                  <img src={capturedImages[currentImageIndex]} alt="Earth Capture" className="w-full h-full object-cover transition-opacity duration-1000 ease-in-out" />
+                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[9px] font-mono px-2 py-1 rounded backdrop-blur-sm border border-white/10">
+                    IMG_MSVIS_{currentImageIndex + 1}.png
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* ==================== BOTTOM ROW: LOGS, matrix, timeline, procedures ==================== */}
         <div className="grid gap-6 xl:grid-cols-12 lg:grid-cols-12 md:grid-cols-1 border-t border-slate-200 pt-6">
@@ -666,6 +756,103 @@ export function MissionDashboard() {
           <span>Procedure Library</span>
         </div>
         <ProceduresSection plan={backendPlan} />
+      </section>
+
+      <section id="digital-twin" className="mx-auto flex max-w-[1720px] flex-col gap-4 p-6 w-full border-t border-slate-200 mt-10">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 select-none">
+          <Tv className="size-3.5 text-indigo-500" aria-hidden="true" />
+          <span>Digital Twin</span>
+        </div>
+        <Card className="border-border/70 bg-white rounded-2xl shadow-sm h-64 flex items-center justify-center">
+          <span className="text-slate-400 text-sm font-semibold">Digital Twin Visualization System Offline</span>
+        </Card>
+      </section>
+
+      <section id="mission-replay" className="mx-auto flex max-w-[1720px] flex-col gap-4 p-6 w-full border-t border-slate-200 mt-10">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 select-none">
+          <Play className="size-3.5 text-indigo-500" aria-hidden="true" />
+          <span>Mission Replay</span>
+        </div>
+        <Card className="border-border/70 bg-white rounded-2xl shadow-sm h-64 flex items-center justify-center">
+          <span className="text-slate-400 text-sm font-semibold">Replay Archive Empty</span>
+        </Card>
+      </section>
+
+      <section id="logs" className="mx-auto flex max-w-[1720px] flex-col gap-4 p-6 w-full border-t border-slate-200 mt-10">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 select-none">
+          <Radio className="size-3.5 text-indigo-500" aria-hidden="true" />
+          <span>Anomaly Logs</span>
+        </div>
+        <Card className="border-border/70 bg-white rounded-2xl shadow-sm p-4 overflow-y-auto max-h-96">
+          {anomalyLogs.length === 0 ? (
+             <div className="h-48 flex items-center justify-center">
+               <span className="text-slate-400 text-sm font-semibold">No Anomaly Logs Available</span>
+             </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {anomalyLogs.map((log: any) => (
+                <div key={log.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col gap-2">
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-slate-700 text-sm">{log.headline}</span>
+                    <Badge variant="outline" className={log.risk_level === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'}>
+                      {log.risk_level?.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">{log.what_happened}</p>
+                  
+                  {log.status === 'Detected - Awaiting Operator Action' && (
+                    <div className="flex gap-2 mt-2">
+                      <Button onClick={() => handleApproveAnomaly(log.id)} className="h-7 text-[10px] bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1">Approve Fix</Button>
+                      <Button onClick={() => handleRejectAnomaly(log.id)} variant="outline" className="h-7 text-[10px] border-slate-200 text-slate-600 hover:bg-slate-100 px-3 py-1">Reject</Button>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-slate-400 font-mono mt-1 flex justify-between border-t border-slate-200 pt-2">
+                    <span>Status: <span className="font-semibold text-slate-600">{log.status}</span></span>
+                    <span>{new Date(log.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </section>
+
+      <section id="data-collection" className="mx-auto flex max-w-[1720px] flex-col gap-4 p-6 w-full border-t border-slate-200 mt-10">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 select-none">
+          <Database className="size-3.5 text-indigo-500" aria-hidden="true" />
+          <span>Data Collection</span>
+        </div>
+        <Card className="border-border/70 bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-1 border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+              <Camera className="size-8 text-slate-400 mb-2" />
+              <p className="text-sm font-semibold text-slate-600">Upload Images & Audio</p>
+              <p className="text-xs text-slate-400 mt-1 text-center">Drag and drop files here, or click to browse.</p>
+              <input type="file" multiple accept="image/*,audio/*" className="hidden" />
+            </div>
+            <div className="flex-1 grid grid-cols-2 gap-4 auto-rows-[120px]">
+              <div className="bg-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 border border-slate-200">
+                <Camera className="size-6 mb-1" />
+                <span className="text-[10px] uppercase font-bold">Image_001.jpg</span>
+              </div>
+              <div className="bg-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 border border-slate-200">
+                <Radio className="size-6 mb-1" />
+                <span className="text-[10px] uppercase font-bold">Telemetry_Audio.wav</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      <section id="settings" className="mx-auto flex max-w-[1720px] flex-col gap-4 p-6 w-full border-t border-slate-200 mt-10 mb-20">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 select-none">
+          <Settings2 className="size-3.5 text-indigo-500" aria-hidden="true" />
+          <span>Settings</span>
+        </div>
+        <Card className="border-border/70 bg-white rounded-2xl shadow-sm h-64 flex items-center justify-center">
+          <span className="text-slate-400 text-sm font-semibold">Configuration Panel Offline</span>
+        </Card>
       </section>
 
     </div>

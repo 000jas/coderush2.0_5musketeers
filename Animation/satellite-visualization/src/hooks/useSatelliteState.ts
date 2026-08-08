@@ -1,16 +1,14 @@
-import { useMockTelemetry } from './useMockTelemetry';
+import { useRealtimeTelemetry } from './useRealtimeTelemetry';
 import { mapRawToState } from '../utils/telemetryMapper';
-import type { SatelliteState, RawTelemetry } from '../types/SatelliteState';
+import type { SatelliteState, RawTelemetry, AIPlan } from '../types/SatelliteState';
 
 /**
  * Custom hook to coordinate satellite telemetry state updates.
  * Exposes a clean, mapped camelCase interface for the React components and 3D scene,
  * while managing integration with the raw backend JSON schema.
- * 
- * To switch to a live backend, replace useMockTelemetry with useRealtimeTelemetry inside this hook.
  */
 export const useSatelliteState = () => {
-  const { rawState, updateRawState, isSimulationActive, setIsSimulationActive } = useMockTelemetry();
+  const { rawState, plan, updateRawState, isSimulationActive, setIsSimulationActive } = useRealtimeTelemetry();
   
   // 1. Map raw telemetry to frontend-friendly state
   const state = mapRawToState(rawState);
@@ -42,8 +40,10 @@ export const useSatelliteState = () => {
   return {
     state,
     rawState,
+    plan,
     updateState,
     isSimulationActive,
     setIsSimulationActive,
   };
 };
+

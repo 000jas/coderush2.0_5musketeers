@@ -1,12 +1,48 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useSatelliteState } from './hooks/useSatelliteState';
 import { SpaceScene } from './scene/SpaceScene';
 import { DashboardUI } from './components/DashboardUI';
 import { DevPanel } from './components/DevPanel';
+import { AnomalyModal } from './components/AnomalyModal';
+import { supabase } from './lib/supabase';
 import './App.css';
 
 function App() {
-  const { state, updateState, isSimulationActive, setIsSimulationActive } = useSatelliteState();
+  const { state, plan, updateState, isSimulationActive, setIsSimulationActive } = useSatelliteState();
+  const [showAnomalyModal, setShowAnomalyModal] = useState(false);
+
+  // Keep track of the last processed plan headline to avoid repeated popups
+  const lastProcessedHeadline = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (plan && (plan.risk_level === 'critical' || plan.risk_level === 'high' || plan.risk_level === 'elevated')) {
+      if (plan.headline !== lastProcessedHeadline.current) {
+        setShowAnomalyModal(true);
+        lastProcessedHeadline.current = plan.headline;
+      }
+    }
+  }, [plan]);
+
+  useEffect(() => {
+    const subscription = supabase.channel('anomaly_approval')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'anomalies' }, payload => {
+        if (payload.new.status === 'Approved & Resolved') {
+          handleAnomalyApprove();
+        }
+      })
+      .subscribe();
+    
+    return () => { supabase.removeChannel(subscription); };
+  }, []);
+
+  const handleAnomalyApprove = () => {
+    setShowAnomalyModal(false);
+    updateState({
+      activeFault: 'None',
+      overallSatelliteHealth: 'Good',
+      missionMode: 'Safe Mode'
+    });
+  };
 
   // Create a mutable reference to store the latest state for the 3D scene loop.
   // This avoids triggering React re-renders on the WebGL Canvas.
@@ -60,7 +96,24 @@ function App() {
           isSimulationActive={isSimulationActive}
           setIsSimulationActive={setIsSimulationActive}
         />
+
+        {/* Nominal Plan Widget */}
+        {!showAnomalyModal && plan && plan.risk_level === 'nominal' && (
+          <div className="nominal-plan-widget">
+            <h3>Nominal Operation Plan</h3>
+            <p className="plan-headline">{plan.headline}</p>
+            <p className="plan-action">{plan.next_action}</p>
+          </div>
+        )}
       </div>
+
+      {showAnomalyModal && plan && (
+        <AnomalyModal 
+          plan={plan} 
+          onDismiss={() => setShowAnomalyModal(false)} 
+          onApprove={handleAnomalyApprove}
+        />
+      )}
     </div>
   );
 }

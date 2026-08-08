@@ -1,3 +1,13 @@
+export interface AIPlan {
+  headline: string;
+  risk_level: string;
+  what_happened: string;
+  next_action: string;
+  satellite_instruction: string;
+  precautions: string[];
+  operator_notes: string[];
+}
+
 export interface RawTelemetry {
   timestamp: string;
   "Battery Percentage": number;

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import '@/lib/envPolyfill';
 import type { RawTelemetry, SatelliteState, TimelineEvent, LogMessage } from '../lib/types';
 import { mapRawToState } from '../lib/telemetryMapper';
+import { supabase } from '../lib/supabase';
 
 // Initial local fallback telemetry values
 const INITIAL_RAW_STATE: RawTelemetry = {
@@ -84,6 +85,21 @@ export const useDashboardState = () => {
     setTimeline((prev) => [newEvent, ...prev].slice(0, 80));
   };
 
+  const logAnomalyToDb = async (plan: BackendPlan, faultType: string) => {
+    try {
+      await supabase.from('anomalies').insert([{
+        headline: plan.headline,
+        risk_level: plan.risk_level,
+        what_happened: `System detected anomaly: ${faultType}`,
+        next_action: plan.satellite_instruction,
+        precautions: plan.precautions,
+        status: 'Detected - Awaiting Operator Action'
+      }]);
+    } catch (e) {
+      console.error("Failed to insert auto-logged anomaly:", e);
+    }
+  };
+
   // Telemetry Poller from the Backend
   const fetchTelemetry = async () => {
     try {
@@ -97,6 +113,12 @@ export const useDashboardState = () => {
         }
         if (data.plan) {
           setBackendPlan(data.plan);
+          
+          if (data.telemetry && data.telemetry["Active Fault"] !== 'None') {
+            if (data.telemetry["Active Fault"] !== prevFaultRef.current) {
+              logAnomalyToDb(data.plan, data.telemetry["Active Fault"]);
+            }
+          }
         }
       } else {
         // Fallback to local simulator if server returns non-200
@@ -265,8 +287,12 @@ export const useDashboardState = () => {
 
       if (res.ok) {
         addLog('CRITICAL', `Fault injected successfully on StellX backend: "${code}"`);
-        // Immediately fetch the updated telemetry state and precautions plan from /telemetry/next
-        await fetchTelemetry();
+        const data = await res.json();
+        if (data.telemetry) setRawState(data.telemetry);
+        if (data.plan) setBackendPlan(data.plan);
+        if (data.telemetry && data.plan && data.telemetry["Active Fault"] !== 'None') {
+          logAnomalyToDb(data.plan, data.telemetry["Active Fault"]);
+        }
       } else {
         injectLocalAnomalyFallback(faultType);
       }
@@ -289,7 +315,7 @@ export const useDashboardState = () => {
     
     // Fallback AI precautions and procedure checklist in case the API is offline
     if (faultType.includes('Battery') || faultType.includes('Power')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: battery_critical',
         risk_level: 'critical',
         satellite_instruction: 'Isolate compromised lithium-ion battery cells and limit bus current draw.',
@@ -310,9 +336,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Bus voltage stabilized, thermal cell breakdown averted.',
         success_probability: 92.5,
         recovery_time: '01m 45s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else if (faultType.includes('Thermal') || faultType.includes('CPU')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: cpu_overheat',
         risk_level: 'critical',
         satellite_instruction: 'Initiate CPU clock cycle throttling and align radiator plates.',
@@ -330,9 +358,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Junction temperature returns to safe operating threshold.',
         success_probability: 95.8,
         recovery_time: '03m 10s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else if (faultType.includes('Solar')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: solar_failure',
         risk_level: 'critical',
         satellite_instruction: 'Reorient solar array panels to maximize sun tracking angle of incidence.',
@@ -349,9 +379,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Array output returns above threshold levels.',
         success_probability: 98.2,
         recovery_time: '04m 15s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else if (faultType.includes('Camera')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: sensor_glitch',
         risk_level: 'critical',
         satellite_instruction: 'Disable camera optics power grid and queue optical sensor recalibration.',
@@ -368,9 +400,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Image sensor re-initializes cleanly on reboot.',
         success_probability: 97.4,
         recovery_time: '01m 15s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else if (faultType.includes('Communication')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: comm_loss',
         risk_level: 'critical',
         satellite_instruction: 'Execute telemetry transmitter reboot and cycle secondary S-band transceiver.',
@@ -387,9 +421,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Link locked, telemetry downlink restored.',
         success_probability: 90.5,
         recovery_time: '05m 00s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else if (faultType.includes('Storage')) {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: storage_full',
         risk_level: 'critical',
         satellite_instruction: 'Flush transient data telemetry logs and enable deep storage compression.',
@@ -406,9 +442,11 @@ export const useDashboardState = () => {
         expected_outcome: 'SSR storage footprint compressed and cleared.',
         success_probability: 99.1,
         recovery_time: '02m 00s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     } else {
-      setBackendPlan({
+      const plan = {
         headline: 'Emergency Action: multi_fault',
         risk_level: 'critical',
         satellite_instruction: 'Perform whole satellite cold-reboot cycle and wait contact.',
@@ -425,9 +463,11 @@ export const useDashboardState = () => {
         expected_outcome: 'Spacecraft enters survival safe state successfully.',
         success_probability: 88.4,
         recovery_time: '06m 00s'
-      });
+      };
+      setBackendPlan(plan);
+      logAnomalyToDb(plan, faultType);
     }
-
+    
     setFaultsDetectedCount((prev) => prev + 1);
     addLog('CRITICAL', `Local Simulator Fault Injected: "${faultType}"`);
     addTimelineEvent('CRITICAL', 'Core', `System Fault Flagged: ${faultType}`);
@@ -442,7 +482,9 @@ export const useDashboardState = () => {
 
     const interval = setInterval(() => {
       setMissionSeconds((prev) => prev + 1);
-      fetchTelemetry();
+      if (prevFaultRef.current === 'None') {
+        fetchTelemetry();
+      }
     }, 3000); // 3-second sweep intervals matching backend constraints
 
     return () => clearInterval(interval);

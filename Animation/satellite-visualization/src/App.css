@@ -1,1 +1,145 @@
 /* App-specific overrides can go here, global layout managed in index.css */
+
+/* Anomaly Modal Styles */
+.anomaly-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.anomaly-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 600px;
+  max-width: 90vw;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.anomaly-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px 8px 0 0;
+}
+
+.anomaly-header .anomaly-icon {
+  font-size: 2rem;
+}
+
+.anomaly-header h2 {
+  color: var(--color-critical);
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.anomaly-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.anomaly-section {
+  margin-bottom: 1.5rem;
+}
+.anomaly-section:last-child {
+  margin-bottom: 0;
+}
+
+.anomaly-section h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  margin-top: 0;
+}
+
+.anomaly-section p {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.highlight-action {
+  font-weight: bold;
+  color: var(--color-warning);
+}
+.highlight-instruction {
+  font-family: monospace;
+  background: rgba(0,0,0,0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.anomaly-section ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  line-height: 1.5;
+}
+
+.anomaly-actions {
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary { background: var(--color-primary); color: white; }
+.btn-secondary { background: var(--bg-dark); border: 1px solid var(--border-color); color: white; }
+.btn-success { background: var(--color-nominal); color: white; }
+
+/* Nominal Plan Widget */
+.nominal-plan-widget {
+  position: absolute;
+  top: 80px;
+  right: 320px; /* Offset from DevPanel */
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  width: 300px;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.nominal-plan-widget h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-nominal);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.nominal-plan-widget .plan-headline {
+  margin: 0 0 0.25rem 0;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.nominal-plan-widget .plan-action {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SatelliteState } from '../types/SatelliteState';
+import { DataCollectionPanel } from './DataCollectionPanel';
 
 interface DevPanelProps {
   state: SatelliteState;
@@ -39,7 +40,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({
   };
 
   return (
-    <div className="hud-panel right-panel">
+    <div className="hud-panel right-panel" style={{ display: 'flex', flexDirection: 'column' }}>
       {/* 1. Simulation Master Control */}
       <div className="widget" style={{ borderColor: isSimulationActive ? 'var(--color-primary)' : 'var(--text-dim)' }}>
         <div className="widget-title">SIMULATOR SETTINGS</div>
@@ -143,7 +144,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({
       </div>
 
       {/* 3. Subsystem Sliders */}
-      <div className="widget">
+      <div className="widget" style={{ display: isSimulationActive ? 'none' : 'block' }}>
         <div className="widget-title">TELEMETRY SLIDERS OVERRIDE</div>
         
         <div className="dev-controls">
@@ -216,6 +217,8 @@ export const DevPanel: React.FC<DevPanelProps> = ({
           </div>
         </div>
       </div>
+
+      <DataCollectionPanel imagesCaptured={state.imagesCaptured} />
     </div>
   );
 };
