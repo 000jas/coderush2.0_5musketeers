@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || 'https://stellx.onrender.com',
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

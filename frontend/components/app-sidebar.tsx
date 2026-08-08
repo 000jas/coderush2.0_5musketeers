@@ -1,18 +1,15 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Radio,
   Clock3,
-  AlertTriangle,
-  Terminal,
   FileText,
   Activity,
-  Cpu,
-  BarChart3,
-  Command,
+  Play,
+  History,
+  Settings2,
+  Tv,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -24,24 +21,24 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export function AppSidebar() {
-  const pathname = usePathname()
   const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen, activeSection, setActiveSection } = useSidebar()
 
   const navItems = [
-    { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
-    { name: 'Missions', id: 'missions', icon: Radio },
-    { name: 'Timeline Planner', id: 'timeline-planner', icon: Clock3 },
-    { name: 'Command Center', id: 'command-center', icon: Terminal },
-    { name: 'Procedures', id: 'procedures', icon: FileText },
-    { name: 'Event Timeline', id: 'event-timeline', icon: Activity },
-    { name: 'Reports', id: 'reports', icon: BarChart3 },
+    { name: 'Mission Dashboard', id: 'dashboard', icon: LayoutDashboard },
+    { name: 'Mission Planner', id: 'mission-planner', icon: Clock3 },
+    { name: 'Telemetry Monitor', id: 'telemetry-monitor', icon: Activity },
+    { name: 'Digital Twin', id: 'digital-twin', icon: Tv },
+    { name: 'Procedure Engine', id: 'procedure-engine', icon: FileText },
+    { name: 'Simulation', id: 'simulation', icon: Play },
+    { name: 'Mission Replay', id: 'mission-replay', icon: History },
+    { name: 'Mission History', id: 'mission-history', icon: Radio },
+    { name: 'Settings', id: 'settings', icon: Settings2 },
   ]
 
   const handleScroll = (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     const element = document.getElementById(id)
     if (element) {
-      // Find element top offset, accounting for sticky header (64px)
       const yOffset = -64
       const y = element.getBoundingClientRect().top + window.scrollY + yOffset
       window.scrollTo({ top: y, behavior: 'smooth' })
@@ -71,17 +68,14 @@ export function AppSidebar() {
         {/* Top Header Row / Logo */}
         <div className="flex h-12 items-center justify-between px-2 pb-3">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground select-none">
-              <Command className="size-4" aria-hidden="true" />
+            <span className="text-xl shrink-0 select-none">🚀</span>
+            <div className={cn(
+              "flex flex-col transition-opacity duration-350",
+              isCollapsed ? "opacity-0 w-0" : "opacity-100"
+            )}>
+              <span className="font-bold text-sm tracking-wide text-foreground leading-none">STELLX</span>
+              <span className="text-[9px] text-muted-foreground leading-none mt-1 select-none">Mission Operations Platform</span>
             </div>
-            <span
-              className={cn(
-                "font-semibold tracking-tight text-foreground transition-opacity duration-300",
-                isCollapsed ? "opacity-0 w-0" : "opacity-100"
-              )}
-            >
-              StellX
-            </span>
           </div>
 
           {/* Mobile Close Button */}
@@ -101,10 +95,10 @@ export function AppSidebar() {
           aria-label="Primary navigation"
           className="flex flex-1 flex-col gap-1.5 overflow-y-auto pt-4"
         >
-          {/* Section Header (only visible when expanded) */}
+          {/* Section Header */}
           {!isCollapsed && (
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground select-none">
-              Workspace
+              Console Menu
             </p>
           )}
 
@@ -196,7 +190,7 @@ export function AppSidebar() {
             )}
           </div>
 
-          {/* Collapse sidebar toggle button (Desktop only) */}
+          {/* Collapse sidebar toggle button */}
           <Button
             variant="ghost"
             onClick={() => setIsCollapsed(!isCollapsed)}
